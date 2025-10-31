@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Circuit Simulator - Physics Learning Tool</title>
+    <link rel="stylesheet" href="circuit.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>⚡ Interactive Circuit Simulator</h1>
+            <p class="subtitle">Learn about resistors, current, voltage, and Ohm's Law</p>
+        </header>
+
+        <!-- Control Panel -->
+        <section class="control-panel">
+            <div class="control-group">
+                <label for="voltage-slider">
+                    <strong>Power Supply Voltage:</strong>
+                    <span id="voltage-display">12.0</span> V
+                </label>
+                <input 
+                    type="range" 
+                    id="voltage-slider" 
+                    min="0" 
+                    max="24" 
+                    step="0.1" 
+                    value="12"
+                    class="slider">
+            </div>
+
+            <div class="control-group">
+                <strong>Add Component:</strong>
+                <div class="button-group">
+                    <button id="add-resistor-btn" class="btn btn-primary">
+                        + Basic Resistor
+                    </button>
+                    <button id="add-bulb-10-btn" class="btn btn-bulb">
+                        💡 10Ω Bulb
+                    </button>
+                    <button id="add-bulb-15-btn" class="btn btn-bulb">
+                        💡 15Ω Bulb
+                    </button>
+                    <button id="add-bulb-20-btn" class="btn btn-bulb">
+                        💡 20Ω Bulb
+                    </button>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <strong>Placement Mode:</strong>
+                <div class="radio-group">
+                    <label class="radio-label">
+                        <input type="radio" name="placement" value="series" checked>
+                        <span>Series (in line)</span>
+                    </label>
+                    <label class="radio-label">
+                        <input type="radio" name="placement" value="parallel">
+                        <span>Parallel (branched)</span>
+                    </label>
+                </div>
+                <div class="selection-info" id="selection-info" style="margin-top: 10px; padding: 10px; background: #e3f2fd; border-radius: 4px; display: none;">
+                    <strong style="color: #1976d2;">📌 Selected: </strong>
+                    <span id="selection-count">0 components</span>
+                    <button id="clear-selection-btn" class="btn btn-secondary" style="margin-left: 10px; padding: 5px 10px; font-size: 0.9em;">Clear Selection</button>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <button id="reset-btn" class="btn btn-secondary">
+                    🔄 Reset Circuit
+                </button>
+            </div>
+        </section>
+
+        <!-- Circuit Diagram -->
+        <section class="circuit-container">
+            <div class="circuit-canvas">
+                <svg id="circuit-svg" viewBox="0 0 1000 600">
+                    <defs>
+                        <!-- Glow filters for lightbulbs -->
+                        <filter id="glow-low" x="-50%" y="-50%" width="200%" height="200%">
+                            <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+                            <feMerge>
+                                <feMergeNode in="coloredBlur"/>
+                                <feMergeNode in="SourceGraphic"/>
+                            </feMerge>
+                        </filter>
+                        <filter id="glow-medium" x="-50%" y="-50%" width="200%" height="200%">
+                            <feGaussianBlur stdDeviation="5" result="coloredBlur"/>
+                            <feMerge>
+                                <feMergeNode in="coloredBlur"/>
+                                <feMergeNode in="SourceGraphic"/>
+                            </feMerge>
+                        </filter>
+                        <filter id="glow-high" x="-50%" y="-50%" width="200%" height="200%">
+                            <feGaussianBlur stdDeviation="8" result="coloredBlur"/>
+                            <feMerge>
+                                <feMergeNode in="coloredBlur"/>
+                                <feMergeNode in="SourceGraphic"/>
+                            </feMerge>
+                        </filter>
+                        
+                        <!-- Arrow marker for current direction -->
+                        <marker id="arrowhead" markerWidth="10" markerHeight="10" 
+                                refX="5" refY="3" orient="auto">
+                            <polygon points="0 0, 10 3, 0 6" fill="#e74c3c" />
+                        </marker>
+                    </defs>
+                    
+                    <!-- Circuit elements will be rendered here by JavaScript -->
+                    <g id="circuit-group"></g>
+                </svg>
+            </div>
+            
+            <div class="instructions">
+                <p>💡 <strong>Tip:</strong> <strong>Drag components</strong> to reposition them in the circuit (blue circles show drop zones). Click to select, or drag across background to multi-select. Selected components show stats popup.</p>
+            </div>
+        </section>
+
+        <!-- Overall Circuit Stats -->
+        <section class="stats-panel">
+            <h2>Overall Circuit Statistics</h2>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-label">Total Voltage</div>
+                    <div class="stat-value" id="total-voltage">12.0 V</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Total Current</div>
+                    <div class="stat-value" id="total-current">1.20 A</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Total Resistance</div>
+                    <div class="stat-value" id="total-resistance">10.0 Ω</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Total Power</div>
+                    <div class="stat-value" id="total-power">14.4 W</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Component Details Panel -->
+        <section class="component-details" id="component-details" style="display: none;">
+            <h3>Component Details</h3>
+            <div id="component-info">
+                <!-- Populated by JavaScript when component is selected -->
+            </div>
+            <button id="delete-component-btn" class="btn btn-danger">
+                🗑️ Delete Component
+            </button>
+            <button id="close-details-btn" class="btn btn-secondary">
+                Close
+            </button>
+        </section>
+
+        <!-- Modal for custom resistor value -->
+        <div id="resistor-modal" class="modal" style="display: none;">
+            <div class="modal-content">
+                <h3>Add Custom Resistor</h3>
+                <label for="resistor-value">Resistance Value (Ω):</label>
+                <input type="number" id="resistor-value" min="1" max="1000" value="50" step="1">
+                <div class="modal-buttons">
+                    <button id="confirm-resistor-btn" class="btn btn-primary">Add Resistor</button>
+                    <button id="cancel-resistor-btn" class="btn btn-secondary">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Load JavaScript modules -->
+    <script src="circuit.js"></script>
+    <script src="circuit-renderer.js"></script>
+    <script src="circuit-interactions.js"></script>
+</body>
+</html>
+

@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Circuit Simulator Test</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: Arial, sans-serif;
+        }
+        .info {
+            background: #e3f2fd;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .info h2 {
+            margin-top: 0;
+        }
+        iframe {
+            width: 100%;
+            height: 800px;
+            border: 2px solid #ccc;
+            border-radius: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="info">
+        <h2>Circuit Simulator - Quick Test</h2>
+        <p><strong>Default Circuit:</strong> 12V power supply with one 10Ω resistor</p>
+        <p><strong>To test parallel layout:</strong></p>
+        <ol>
+            <li>Select "Parallel" placement mode</li>
+            <li>Click "💡 10Ω Bulb" or any other component</li>
+            <li>You should see components arranged side-by-side with rectangular branches</li>
+        </ol>
+    </div>
+    
+    <iframe src="circuit.html"></iframe>
+</body>
+</html>
+
+
