@@ -294,6 +294,219 @@
         </div>
     </div>
 
+    <!-- Cookie Banner -->
+    <div id="cookie-banner" style="position:fixed;inset:auto 0 0 0;display:none;z-index:9999;background:#111;color:#fff;padding:12px 16px;font:14px/1.4 -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;box-shadow:0 -2px 12px rgba(0,0,0,.2)">
+        <div style="max-width:960px;margin:0 auto;display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+            <div style="flex:1 1 300px">
+                We use cookies to personalize content. Essential cookies are required. Enable analytics?
+            </div>
+            <div style="display:flex;gap:8px">
+                <button id="cookie-accept-all" style="background:#22c55e;color:#111;border:none;padding:8px 12px;border-radius:6px;cursor:pointer">Accept analytics</button>
+                <button id="cookie-decline" style="background:#eab308;color:#111;border:none;padding:8px 12px;border-radius:6px;cursor:pointer">Essential only</button>
+            </div>
+        </div>
+    </div>
+
     <script src="script.js"></script>
+
+    <script>
+    (function () {
+        'use strict';
+        // -------- Cookie helpers --------
+        function setCookie(name, value, opts) {
+            opts = opts || {};
+            var days = (opts.days == null ? 365 : opts.days);
+            var expires = new Date(Date.now() + days * 864e5).toUTCString();
+            var path = (opts.path == null ? '/' : opts.path);
+            var sameSite = (opts.sameSite == null ? 'Lax' : opts.sameSite);
+            var secure = ((opts.secure == null ? (location.protocol === 'https:') : opts.secure)) ? '; Secure' : '';
+            document.cookie = encodeURIComponent(name) + '=' + encodeURIComponent(value)
+                + '; Expires=' + expires + '; Path=' + path + '; SameSite=' + sameSite + secure;
+        }
+        function getCookie(name) {
+            var key = encodeURIComponent(name) + '=';
+            var found = document.cookie.split('; ').find(function (c) { return c.indexOf(key) === 0; });
+            return found ? decodeURIComponent(found.slice(key.length)) : null;
+        }
+        function getCookieValue(name) {
+            var raw = getCookie(name);
+            if (!raw) return null;
+            try { return JSON.parse(raw); } catch (_) { return raw; }
+        }
+
+        // -------- localStorage with TTL --------
+        function setLocalWithExpiry(key, value, ttlMs) {
+            var record = { value: value, expiresAt: ttlMs ? (Date.now() + ttlMs) : null };
+            try { localStorage.setItem(key, JSON.stringify(record)); } catch (_) {}
+        }
+        function getLocalWithExpiry(key) {
+            var raw = null;
+            try { raw = localStorage.getItem(key); } catch (_) { return null; }
+            if (!raw) return null;
+            try {
+                var rec = JSON.parse(raw);
+                if (!rec || (rec.expiresAt && Date.now() > rec.expiresAt)) {
+                    try { localStorage.removeItem(key); } catch (_) {}
+                    return null;
+                }
+                return rec.value;
+            } catch (_) { return null; }
+        }
+        function addToRecent(key, item, limit, ttlMs) {
+            var list = getLocalWithExpiry(key) || [];
+            var filtered = [item].concat(list.filter(function (x) { return x !== item; })).slice(0, limit);
+            setLocalWithExpiry(key, filtered, ttlMs);
+        }
+
+        // -------- Consent banner --------
+        var banner = document.getElementById('cookie-banner');
+        var btnAccept = document.getElementById('cookie-accept-all');
+        var btnDecline = document.getElementById('cookie-decline');
+        var CONSENT_COOKIE = 'honey_cookie_consent';
+
+        function showBannerIfNeeded() {
+            var consent = getCookieValue(CONSENT_COOKIE);
+            if (!consent) banner.style.display = 'block';
+        }
+        function setConsent(analytics) {
+            var value = JSON.stringify({ necessary: true, analytics: !!analytics, ts: Date.now() });
+            setCookie(CONSENT_COOKIE, value, { days: 365 });
+            banner.style.display = 'none';
+        }
+        if (btnAccept) btnAccept.addEventListener('click', function () {
+            setConsent(true);
+            try {
+                if (typeof window.honeyWriteTest === 'function') { window.honeyWriteTest(); }
+            } catch (_) {}
+        });
+        if (btnDecline) btnDecline.addEventListener('click', function () { setConsent(false); });
+
+        // -------- Anonymous ID --------
+        if (!getCookie('honey_anon_id')) {
+            try {
+                var idBytes = new Uint8Array(16);
+                (self.crypto || window.crypto).getRandomValues(idBytes);
+                var anonId = Array.prototype.map.call(idBytes, function (b) { return b.toString(16).padStart(2, '0'); }).join('');
+                setCookie('honey_anon_id', anonId, { days: 365 });
+            } catch (_) {}
+        }
+
+        // -------- UTM/referrer attribution (optional) --------
+        try {
+            var params = new URLSearchParams(location.search);
+            var utm = {};
+            params.forEach(function (v, k) { if (/^utm_/.test(k)) utm[k] = v; });
+            if (Object.keys(utm).length) {
+                setCookie('honey_attrib', JSON.stringify({ ts: Date.now(), ref: document.referrer || '', utm: utm }), { days: 90 });
+            }
+        } catch (_) {}
+
+        // -------- Track recent sections and gallery clicks --------
+        var TTL_30D = 30 * 24 * 60 * 60 * 1000;
+        var navLinks = document.querySelectorAll('.nav .nav-link');
+        navLinks.forEach(function (a) {
+            a.addEventListener('click', function () {
+                var hash = a.getAttribute('href') || '';
+                var section = hash.replace('#', '') || 'home';
+                addToRecent('honey_recent_sections', section, 5, TTL_30D);
+                setLocalWithExpiry('honey_last_visited_at', Date.now(), TTL_30D);
+            });
+        });
+        var galleryItems = document.querySelectorAll('.honey-gallery .gallery-item');
+        galleryItems.forEach(function (item) {
+            item.addEventListener('click', function () {
+                var kind = item.getAttribute('data-honey') || 'unknown';
+                addToRecent('honey_recent_honeys', kind, 6, TTL_30D);
+                setLocalWithExpiry('honey_last_visited_at', Date.now(), TTL_30D);
+            });
+        });
+
+        // -------- Initial boot --------
+        showBannerIfNeeded();
+        try {
+            console.debug('recent sections', getLocalWithExpiry('honey_recent_sections'));
+            console.debug('recent honeys', getLocalWithExpiry('honey_recent_honeys'));
+        } catch (_) {}
+    })();
+    </script>
+
+    <script type="module">
+        // Firebase modular SDK via CDN
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+        import { getFirestore, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+        import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-analytics.js";
+
+        // Firebase config (provided)
+        const firebaseConfig = {
+            apiKey: "AIzaSyChdutaaQXcjbOjhJGapj5_KzTxCDffGOk",
+            authDomain: "sydneysfunsite-1a3ff.firebaseapp.com",
+            projectId: "sydneysfunsite-1a3ff",
+            storageBucket: "sydneysfunsite-1a3ff.firebasestorage.app",
+            messagingSenderId: "502927499221",
+            appId: "1:502927499221:web:508dd8ce29b17633f4275c",
+            measurementId: "G-X995FW6ZE8"
+        };
+
+        // Init
+        const app = initializeApp(firebaseConfig);
+        try { getAnalytics(app); } catch (_) {}
+        const db = getFirestore(app);
+
+        // Cookie helpers (module scope)
+        function getCookie(name) {
+            const key = encodeURIComponent(name) + '=';
+            const found = document.cookie.split('; ').find(c => c.indexOf(key) === 0);
+            return found ? decodeURIComponent(found.slice(key.length)) : null;
+        }
+        function hasAnalyticsConsent() {
+            const raw = getCookie('honey_cookie_consent');
+            if (!raw) return false;
+            try { return !!(JSON.parse(raw).analytics); } catch (_) { return false; }
+        }
+        function getAnonId() {
+            let id = getCookie('honey_anon_id');
+            if (id) return id;
+            try {
+                const b = new Uint8Array(16);
+                (self.crypto || window.crypto).getRandomValues(b);
+                id = Array.from(b, x => x.toString(16).padStart(2, '0')).join('');
+                const expires = new Date(Date.now() + 365 * 864e5).toUTCString();
+                const secure = location.protocol === 'https:' ? '; Secure' : '';
+                document.cookie = 'honey_anon_id=' + id + '; Expires=' + expires + '; Path=/; SameSite=Lax' + secure;
+            } catch (_) { id = 'anon'; }
+            return id;
+        }
+        const anonId = getAnonId();
+
+        // Dev helper: test write
+        window.honeyWriteTest = async () => {
+            const ref = await addDoc(collection(db, 'interactions'), {
+                anonId,
+                event: 'test',
+                ts: serverTimestamp(),
+                path: location.pathname
+            });
+            console.log('Wrote doc id:', ref.id);
+        };
+
+        // Log gallery clicks (gated by analytics consent)
+        document.querySelectorAll('.honey-gallery .gallery-item').forEach(item => {
+            item.addEventListener('click', async () => {
+                if (!hasAnalyticsConsent()) return;
+                const honey = item.getAttribute('data-honey') || 'unknown';
+                try {
+                    await addDoc(collection(db, 'interactions'), {
+                        anonId,
+                        event: 'gallery_click',
+                        honey,
+                        ts: serverTimestamp(),
+                        path: location.pathname
+                    });
+                } catch (e) {
+                    console.error('Firestore write failed', e);
+                }
+            });
+        });
+    </script>
 </body>
 </html>

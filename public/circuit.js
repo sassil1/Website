@@ -10,6 +10,8 @@
   const svg = document.getElementById("circuit");
   const elNewR = document.getElementById("newR");
   const elAdd = document.getElementById("addRes");
+  const elNewType = document.getElementById("newType");
+  const elRemove = document.getElementById("removeSel");
 
   const elTotalR = document.getElementById("totalR");
   const elTotalI = document.getElementById("totalI");
@@ -21,7 +23,7 @@
 
   // Geometry
   const W = 900, H = 460;
-  const margin = 60;
+  const margin = 110; // more white space around the circuit
   const leftX = margin, rightX = W - margin;
   const topY = margin, bottomY = H - margin;
   const centerX = (leftX + rightX) / 2;
@@ -32,10 +34,91 @@
 
   // Dynamic resistor list
   const resistors = [
-    { id: "r1", R: 10 },
-    { id: "r2", R: 20 },
+    { id: "r1", R: 10, type: "resistor" },
+    { id: "r2", R: 20, type: "resistor" },
   ];
   let nextId = 3;
+  // Simple HTML context menu overlay
+  let ctxMenu = null;
+  function ensureContextMenu() {
+    if (ctxMenu) return ctxMenu;
+    ctxMenu = document.createElement("div");
+    ctxMenu.id = "ctxMenu";
+    Object.assign(ctxMenu.style, {
+      position: "absolute",
+      display: "none",
+      background: "#fff",
+      border: "1px solid #c9d2e3",
+      borderRadius: "8px",
+      boxShadow: "0 6px 18px rgba(16,24,40,0.18)",
+      padding: "6px",
+      zIndex: "9999",
+      fontFamily: "ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif",
+      fontSize: "14px",
+      color: "#111",
+      minWidth: "160px"
+    });
+    const btn = (text) => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.textContent = text;
+      Object.assign(b.style, {
+        width: "100%",
+        textAlign: "left",
+        background: "transparent",
+        border: "0",
+        padding: "8px 10px",
+        cursor: "pointer",
+        borderRadius: "6px"
+      });
+      b.onmouseenter = () => b.style.background = "#f2f4f7";
+      b.onmouseleave = () => b.style.background = "transparent";
+      return b;
+    };
+    const bAdjust = btn("Adjust ohmage");
+    const bRemove = btn("Remove");
+    ctxMenu.appendChild(bAdjust);
+    ctxMenu.appendChild(bRemove);
+    document.body.appendChild(ctxMenu);
+    // handlers set at show-time
+    return ctxMenu;
+  }
+  function showContextMenu(clientX, clientY, resistorId) {
+    const m = ensureContextMenu();
+    m.dataset.resistorId = resistorId;
+    m.style.left = `${clientX + window.scrollX + 6}px`;
+    m.style.top = `${clientY + window.scrollY + 6}px`;
+    m.style.display = "block";
+    // wire buttons
+    const [bAdjust, bRemove] = m.querySelectorAll("button");
+    bAdjust.onclick = (e) => {
+      e.stopPropagation();
+      const comp = resistors.find(r => r.id === resistorId);
+      if (!comp) { hideContextMenu(); return; }
+      const val = prompt("Set resistance (ohms):", String(comp.R));
+      if (val != null) {
+        const R = Math.max(0.01, parseFloat(val));
+        if (isFinite(R)) {
+          comp.R = R;
+          if (resistors[0]?.id === comp.id) elR1.value = String(R);
+          if (resistors[1]?.id === comp.id) elR2.value = String(R);
+          update();
+        }
+      }
+      hideContextMenu();
+    };
+    bRemove.onclick = (e) => {
+      e.stopPropagation();
+      removeById(resistorId);
+      hideContextMenu();
+      update();
+    };
+  }
+  function hideContextMenu() {
+    if (ctxMenu) ctxMenu.style.display = "none";
+  }
+  document.addEventListener("click", () => hideContextMenu());
+  window.addEventListener("resize", () => hideContextMenu());
 
   // Helpers
   function clampPos(value, min, max) { return Math.min(max, Math.max(min, value)); }
@@ -90,68 +173,166 @@
     return e;
   }
   function dot(x, y) {
-    const c = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-    c.setAttribute("cx", x); c.setAttribute("cy", y);
-    c.setAttribute("r", "5"); c.setAttribute("fill", "#333");
-    return c;
+    // Dots disabled for cleaner appearance
+    const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
+    return g;
   }
-  function resistorHorizontal(cx, cy, length, powerFrac, selected = false) {
-    const group = document.createElementNS("http://www.w3.org/2000/svg", "g");
-    const lead = Math.max(16, (length - 60) / 2);
+  const RES_BODY = 60; // constant symbol length for zig-zag body
+  const RES_AMP = 8;
+  const RES_SEGS = 6;
+  const BULB_D = 24;
+  const RES_LEAD = 12; // desired minimum lead length on each side
+  const RES_RENDER_LEN = RES_BODY + 2 * RES_LEAD; // standard total symbol span
+
+  function drawZigZagHorizontal(cx, cy, length, selected = false) {
+    const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
     const left = cx - length / 2, right = cx + length / 2;
+    const bodyLen = Math.min(RES_BODY, Math.max(16, length - 16));
+    const lead = (length - bodyLen) / 2;
+    const x1 = left + lead, x2 = right - lead;
 
-    const lead1 = line(left, cy, left + lead, cy);
-    const lead2 = line(right - lead, cy, right, cy);
-    if (selected) {
-      lead1.setAttribute("stroke-width", "6");
-      lead2.setAttribute("stroke-width", "6");
-      lead1.setAttribute("stroke", "#0d6efd");
-      lead2.setAttribute("stroke", "#0d6efd");
+    const lead1 = line(left, cy, x1, cy);
+    const lead2 = line(x2, cy, right, cy);
+    // leads keep default style; only body highlights
+    g.appendChild(lead1); g.appendChild(lead2);
+
+    const path = document.createElementNS("http://www.w3.org/2000/svg", "polyline");
+    const step = bodyLen / RES_SEGS;
+    const points = [];
+    for (let i = 0; i <= RES_SEGS; i++) {
+      const x = x1 + i * step;
+      const y = cy + (i % 2 === 0 ? -RES_AMP : RES_AMP);
+      points.push(`${x},${y}`);
     }
-    group.appendChild(lead1);
-    group.appendChild(lead2);
-
-    const body = document.createElementNS("http://www.w3.org/2000/svg", "rect");
-    const bodyX = left + lead, bodyY = cy - 12, bodyW = length - 2 * lead, bodyH = 24;
-    body.setAttribute("x", bodyX); body.setAttribute("y", bodyY);
-    body.setAttribute("width", bodyW); body.setAttribute("height", bodyH);
-    body.setAttribute("rx", "4"); body.setAttribute("ry", "4");
-    const intensity = clampPos(Math.pow(powerFrac, 0.5), 0, 1);
-    body.setAttribute("fill", `rgba(255, 200, 0, ${0.15 + 0.55 * intensity})`);
-    body.setAttribute("stroke", selected ? "#0d6efd" : "#111");
-    body.setAttribute("stroke-width", selected ? "3.5" : "2.5");
-    group.appendChild(body);
-    group.style.cursor = "pointer";
-    return group;
+    path.setAttribute("points", points.join(" "));
+    path.setAttribute("fill", "none");
+    path.setAttribute("stroke", selected ? "#0d6efd" : "#111");
+    path.setAttribute("stroke-width", selected ? "3.5" : "2.5");
+    g.appendChild(path);
+    // Larger, invisible hit area for easy selection
+    const hit = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+    hit.setAttribute("x", left - 6);
+    hit.setAttribute("y", cy - 18);
+    hit.setAttribute("width", length + 12);
+    hit.setAttribute("height", 36);
+    hit.setAttribute("fill", "#000");
+    hit.setAttribute("opacity", "0");
+    hit.setAttribute("pointer-events", "all");
+    g.appendChild(hit);
+    g.style.cursor = "pointer";
+    // Attach dataset for hit forwarding convenience (optional)
+    g.dataset.hit = "1";
+    return g;
   }
-  function resistorVertical(cx, cy, length, powerFrac, selected = false) {
-    const group = document.createElementNS("http://www.w3.org/2000/svg", "g");
-    const lead = Math.max(16, (length - 60) / 2);
+
+  function drawZigZagVertical(cx, cy, length, selected = false) {
+    const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
     const top = cy - length / 2, bottom = cy + length / 2;
+    const bodyLen = Math.min(RES_BODY, Math.max(16, length - 16));
+    const lead = (length - bodyLen) / 2;
+    const y1 = top + lead, y2 = bottom - lead;
 
-    const lead1 = line(cx, top, cx, top + lead);
-    const lead2 = line(cx, bottom - lead, cx, bottom);
-    if (selected) {
-      lead1.setAttribute("stroke-width", "6");
-      lead2.setAttribute("stroke-width", "6");
-      lead1.setAttribute("stroke", "#0d6efd");
-      lead2.setAttribute("stroke", "#0d6efd");
+    const lead1 = line(cx, top, cx, y1);
+    const lead2 = line(cx, y2, cx, bottom);
+    // leads keep default style; only body highlights
+    g.appendChild(lead1); g.appendChild(lead2);
+
+    const path = document.createElementNS("http://www.w3.org/2000/svg", "polyline");
+    const step = bodyLen / RES_SEGS;
+    const points = [];
+    for (let i = 0; i <= RES_SEGS; i++) {
+      const y = y1 + i * step;
+      const x = cx + (i % 2 === 0 ? -RES_AMP : RES_AMP);
+      points.push(`${x},${y}`);
     }
-    group.appendChild(lead1);
-    group.appendChild(lead2);
+    path.setAttribute("points", points.join(" "));
+    path.setAttribute("fill", "none");
+    path.setAttribute("stroke", selected ? "#0d6efd" : "#111");
+    path.setAttribute("stroke-width", selected ? "3.5" : "2.5");
+    g.appendChild(path);
+    // Larger, invisible hit area for easy selection
+    const hit = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+    hit.setAttribute("x", cx - 18);
+    hit.setAttribute("y", top - 6);
+    hit.setAttribute("width", 36);
+    hit.setAttribute("height", length + 12);
+    hit.setAttribute("fill", "#000");
+    hit.setAttribute("opacity", "0");
+    hit.setAttribute("pointer-events", "all");
+    g.appendChild(hit);
+    g.style.cursor = "pointer";
+    g.dataset.hit = "1";
+    return g;
+  }
 
-    const body = document.createElementNS("http://www.w3.org/2000/svg", "rect");
-    const bodyX = cx - 12, bodyY = top + lead, bodyW = 24, bodyH = length - 2 * lead;
-    body.setAttribute("x", bodyX); body.setAttribute("y", bodyY);
-    body.setAttribute("width", bodyW); body.setAttribute("height", bodyH);
-    body.setAttribute("rx", "4"); body.setAttribute("ry", "4");
+  function drawBulbHorizontal(cx, cy, length, powerFrac, selected = false) {
+    const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
+    const left = cx - length / 2, right = cx + length / 2;
+    const lead = Math.max(8, (length - BULB_D) / 2);
+    const x1 = left + lead, x2 = right - lead;
+    const lead1 = line(left, cy, x1, cy);
+    const lead2 = line(x2, cy, right, cy);
+    // leads keep default style; only body highlights
+    g.appendChild(lead1); g.appendChild(lead2);
+    const c = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+    c.setAttribute("cx", cx); c.setAttribute("cy", cy); c.setAttribute("r", BULB_D / 2);
     const intensity = clampPos(Math.pow(powerFrac, 0.5), 0, 1);
-    body.setAttribute("fill", `rgba(255, 200, 0, ${0.15 + 0.55 * intensity})`);
-    body.setAttribute("stroke", selected ? "#0d6efd" : "#111");
-    body.setAttribute("stroke-width", selected ? "3.5" : "2.5");
-    group.appendChild(body);
-    group.style.cursor = "pointer";
-    return group;
+    c.setAttribute("fill", `rgba(255, 200, 0, ${0.2 + 0.6 * intensity})`);
+    c.setAttribute("stroke", selected ? "#0d6efd" : "#111");
+    c.setAttribute("stroke-width", selected ? "3" : "2");
+    g.appendChild(c);
+    // Larger, invisible hit area for easy selection
+    const hit = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+    hit.setAttribute("x", left - 6);
+    hit.setAttribute("y", cy - (BULB_D / 2) - 12);
+    hit.setAttribute("width", length + 12);
+    hit.setAttribute("height", BULB_D + 24);
+    hit.setAttribute("fill", "#000");
+    hit.setAttribute("opacity", "0");
+    hit.setAttribute("pointer-events", "all");
+    g.appendChild(hit);
+    g.style.cursor = "pointer";
+    g.dataset.hit = "1";
+    return g;
+  }
+
+  function drawBulbVertical(cx, cy, length, powerFrac, selected = false) {
+    const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
+    const top = cy - length / 2, bottom = cy + length / 2;
+    const lead = Math.max(8, (length - BULB_D) / 2);
+    const y1 = top + lead, y2 = bottom - lead;
+    const lead1 = line(cx, top, cx, y1);
+    const lead2 = line(cx, y2, cx, bottom);
+    g.appendChild(lead1); g.appendChild(lead2);
+    const c = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+    c.setAttribute("cx", cx); c.setAttribute("cy", cy); c.setAttribute("r", BULB_D / 2);
+    const intensity = clampPos(Math.pow(powerFrac, 0.5), 0, 1);
+    c.setAttribute("fill", `rgba(255, 200, 0, ${0.2 + 0.6 * intensity})`);
+    c.setAttribute("stroke", selected ? "#0d6efd" : "#111");
+    c.setAttribute("stroke-width", selected ? "3" : "2");
+    g.appendChild(c);
+    // Larger, invisible hit area for easy selection
+    const hit = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+    hit.setAttribute("x", cx - (BULB_D / 2) - 12);
+    hit.setAttribute("y", top - 6);
+    hit.setAttribute("width", BULB_D + 24);
+    hit.setAttribute("height", length + 12);
+    hit.setAttribute("fill", "#000");
+    hit.setAttribute("opacity", "0");
+    hit.setAttribute("pointer-events", "all");
+    g.appendChild(hit);
+    g.style.cursor = "pointer";
+    g.dataset.hit = "1";
+    return g;
+  }
+
+  function componentHorizontal(kind, cx, cy, length, powerFrac, selected) {
+    if (kind === "bulb") return drawBulbHorizontal(cx, cy, length, powerFrac, selected);
+    return drawZigZagHorizontal(cx, cy, length, selected);
+  }
+  function componentVertical(kind, cx, cy, length, powerFrac, selected) {
+    if (kind === "bulb") return drawBulbVertical(cx, cy, length, powerFrac, selected);
+    return drawZigZagVertical(cx, cy, length, selected);
   }
   function label(text, x, y, anchor = "middle") {
     const t = document.createElementNS("http://www.w3.org/2000/svg", "text");
@@ -165,9 +346,10 @@
   }
 
   // Small SVG popup showing lines of text near a resistor
-  function popupBox(x, y, lines, position = "above") {
+  function popupBox(x, y, lines, position = "above", onToggle = null) {
     const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
-    g.setAttribute("pointer-events", "none");
+    // Allow clicks on popup to toggle selection off
+    g.style.cursor = onToggle ? "pointer" : "default";
     const maxChars = Math.max(0, ...lines.map(s => s.length));
     const width = Math.max(100, Math.min(220, maxChars * 7 + 16));
     const height = lines.length * 16 + 12;
@@ -200,81 +382,263 @@
       t.textContent = text;
       g.appendChild(t);
     });
+    if (onToggle) {
+      g.addEventListener("click", (e) => {
+        e.stopPropagation();
+        onToggle();
+      });
+    }
     return g;
   }
 
-  function drawRectangleLoop() {
-    // Outer rectangle wires
-    svg.appendChild(line(leftX, topY, rightX, topY));     // top
-    svg.appendChild(line(rightX, topY, rightX, bottomY)); // right
-    svg.appendChild(line(rightX, bottomY, leftX, bottomY)); // bottom
-    svg.appendChild(line(leftX, bottomY, leftX, topY));   // left
-
-    // Battery marker on left side (simple + / -)
-    svg.appendChild(label("+", leftX - 20, topY + 10, "end"));
-    svg.appendChild(label("-", leftX - 20, bottomY - 6, "end"));
+  function drawRectangleLoop(opts = {}) {
+    const topGap = opts.topGap || null; // [x1, x2] to skip drawing top segment
+    // Top
+    if (topGap && Array.isArray(topGap) && topGap.length === 2) {
+      const [gx1, gx2] = topGap;
+      if (gx1 > leftX) svg.appendChild(line(leftX, topY, gx1, topY));
+      if (gx2 < rightX) svg.appendChild(line(gx2, topY, rightX, topY));
+    } else {
+      svg.appendChild(line(leftX, topY, rightX, topY)); // full top
+    }
+    // Right, Bottom
+    svg.appendChild(line(rightX, topY, rightX, bottomY));
+    svg.appendChild(line(rightX, bottomY, leftX, bottomY));
+    // Battery symbol centered on left wire: two perpendicular lines centered on the rail,
+    // and the left rail has a small gap between the two terminals.
+    const plateLong = 46;
+    const plateShort = 26;
+    const plateGap = 26; // vertical distance between plates
+    const yPlus = centerY - plateGap / 2;
+    const yMinus = centerY + plateGap / 2;
+    // Left rail segments with gap between terminals
+    svg.appendChild(line(leftX, topY, leftX, yPlus));
+    svg.appendChild(line(leftX, yMinus, leftX, bottomY));
+    // Plates (centered on the wire)
+    const plateP = line(leftX - plateLong / 2, yPlus, leftX + plateLong / 2, yPlus);
+    const plateN = line(leftX - plateShort / 2, yMinus, leftX + plateShort / 2, yMinus);
+    svg.appendChild(plateP);
+    svg.appendChild(plateN);
+    // Labels near the right ends of plates
+    const tPlus = document.createElementNS("http://www.w3.org/2000/svg", "text");
+    tPlus.setAttribute("x", leftX + plateLong / 2 + 8); tPlus.setAttribute("y", yPlus + 5);
+    tPlus.setAttribute("text-anchor", "start");
+    tPlus.setAttribute("font-size", "18");
+    tPlus.setAttribute("font-family", "ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif");
+    tPlus.setAttribute("fill", "#d00");
+    tPlus.textContent = "+";
+    svg.appendChild(tPlus);
+    const tMinus = document.createElementNS("http://www.w3.org/2000/svg", "text");
+    tMinus.setAttribute("x", leftX + plateShort / 2 + 8); tMinus.setAttribute("y", yMinus + 5);
+    tMinus.setAttribute("text-anchor", "start");
+    tMinus.setAttribute("font-size", "18");
+    tMinus.setAttribute("font-family", "ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif");
+    tMinus.setAttribute("fill", "#111");
+    tMinus.textContent = "-";
+    svg.appendChild(tMinus);
   }
 
   function render(mode, V, list, res) {
     clear(svg);
-    drawRectangleLoop();
 
     // Normalize power for brightness
     let pMax = 1e-9;
     for (const r of list) pMax = Math.max(pMax, Math.max(0, res.per[r.id].P));
 
     if (mode === "series") {
-      // Series: N resistors inline on the top edge
-      const y = topY;
+      drawRectangleLoop();
+      // Series: distribute evenly around all four edges, colinear with the local edge
       const n = list.length;
-      const gap = (rightX - leftX) / (n + 1);
+      const width = rightX - leftX;
+      const height = bottomY - topY;
+      const perimeter = 2 * (width + height);
+      const arcGap = perimeter / (n + 1);
+      const cornerPad = 18; // keep clear of corners so wires stay visually connected
+
+      function positionAlongPerimeter(s) {
+        // s: distance from left-top corner along top→right→bottom→left
+        let d = s % perimeter;
+        if (d < width) {
+          // top edge (left→right)
+          return { x: leftX + d, y: topY, edge: "top" };
+        }
+        d -= width;
+        if (d < height) {
+          // right edge (top→bottom)
+          return { x: rightX, y: topY + d, edge: "right" };
+        }
+        d -= height;
+        if (d < width) {
+          // bottom edge (right→left)
+          return { x: rightX - d, y: bottomY, edge: "bottom" };
+        }
+        d -= width;
+        // left edge (bottom→top)
+        return { x: leftX, y: bottomY - d, edge: "left" };
+      }
+
       list.forEach((r, i) => {
-        const cx = leftX + gap * (i + 1);
-        const rLen = Math.max(90, Math.min(220, gap * 0.7));
-        svg.appendChild(dot(cx - rLen / 2, y));
-        svg.appendChild(dot(cx + rLen / 2, y));
-        const f = Math.max(0, res.per[r.id].P) / pMax;
+        const s = arcGap * (i + 1);
+        const pos = positionAlongPerimeter(s);
+        // Nudge away from corners to avoid too-short bodies
+        let px = pos.x, py = pos.y;
+        const guard = 28;
+        if (pos.edge === "top" || pos.edge === "bottom") {
+          if (px - leftX < guard) px = leftX + guard;
+          else if (rightX - px < guard) px = rightX - guard;
+        } else {
+          if (py - topY < guard) py = topY + guard;
+          else if (bottomY - py < guard) py = bottomY - guard;
+        }
+
+        // Use a standard symbol span everywhere
+        const rLen = RES_RENDER_LEN;
         const sel = selectedIds.has(r.id);
-        const g = resistorHorizontal(cx, y, rLen, f, sel);
-        g.dataset.resistorId = r.id;
-        g.addEventListener("click", (e) => {
-          e.stopPropagation();
-          if (selectedIds.has(r.id)) selectedIds.delete(r.id); else selectedIds.add(r.id);
-          update();
+        const f = Math.max(0, res.per[r.id].P) / pMax;
+
+        if (pos.edge === "top" || pos.edge === "bottom") {
+          const y = py;
+          // Keep away from corners: clamp center so the full symbol fits with margin
+          const half = rLen / 2;
+          px = clampPos(px, leftX + cornerPad + half, rightX - cornerPad - half);
+          const x1 = px - half;
+          const x2 = px + half;
+          svg.appendChild(dot(x1, y));
+          svg.appendChild(dot(x2, y));
+          const g = componentHorizontal(r.type || "resistor", px, y, rLen, f, sel);
+          g.dataset.resistorId = r.id;
+          g.addEventListener("click", (e) => {
+            e.stopPropagation();
+            if (selectedIds.has(r.id)) selectedIds.delete(r.id); else selectedIds.add(r.id);
+            update();
+          });
+        g.addEventListener("contextmenu", (e) => {
+          e.preventDefault();
+          showContextMenu(e.clientX, e.clientY, r.id);
         });
-        svg.appendChild(g);
-        if (sel) {
-          svg.appendChild(popupBox(cx, y, [
-            `V = ${fmtV(res.per[r.id].V)}`,
-            `I = ${fmtI(res.per[r.id].I)}`
-          ], "below"));
+          svg.appendChild(g);
+          if (sel) {
+            const popupPos = pos.edge === "top" ? "below" : "above";
+            svg.appendChild(popupBox(px, y, [
+              `V = ${fmtV(res.per[r.id].V)}`,
+              `I = ${fmtI(res.per[r.id].I)}`
+            ], popupPos, () => { selectedIds.delete(r.id); update(); }));
+          }
+        } else {
+          const x = px;
+          // Keep away from corners: clamp center so the full symbol fits with margin
+          let half = rLen / 2;
+          py = clampPos(py, topY + cornerPad + half, bottomY - cornerPad - half);
+          // Avoid overlapping the left-rail battery: reserve a vertical band
+          const plateGap = 26;
+          const reserveMargin = 18;
+          const clearTop = centerY - plateGap / 2 - reserveMargin;
+          const clearBottom = centerY + plateGap / 2 + reserveMargin;
+          if (x === leftX) {
+            let y1 = py - half;
+            let y2 = py + half;
+            if (!(y2 < clearTop || y1 > clearBottom)) {
+            // Nudge above or below the reserved band
+              if (py <= centerY) py = clearTop - half - 2;
+              else py = clearBottom + half + 2;
+              // Clamp within bounds after nudge
+              py = clampPos(py, topY + cornerPad + half, bottomY - cornerPad - half);
+            }
+          }
+          const y1 = py - half;
+          const y2 = py + half;
+          svg.appendChild(dot(x, y1));
+          svg.appendChild(dot(x, y2));
+          const g = componentVertical(r.type || "resistor", x, py, rLen, f, sel);
+          g.dataset.resistorId = r.id;
+          g.addEventListener("click", (e) => {
+            e.stopPropagation();
+            if (selectedIds.has(r.id)) selectedIds.delete(r.id); else selectedIds.add(r.id);
+            update();
+          });
+          g.addEventListener("contextmenu", (e) => {
+            e.preventDefault();
+            showContextMenu(e.clientX, e.clientY, r.id);
+          });
+          g.addEventListener("contextmenu", (e) => {
+            e.preventDefault();
+            showContextMenu(e.clientX, e.clientY, r.id);
+          });
+          svg.appendChild(g);
+          if (sel) {
+            const popupPos = pos.edge === "right" ? "right" : "left";
+            svg.appendChild(popupBox(x, py, [
+              `V = ${fmtV(res.per[r.id].V)}`,
+              `I = ${fmtI(res.per[r.id].I)}`
+            ], popupPos, () => { selectedIds.delete(r.id); update(); }));
+          }
         }
       });
     } else {
-      // Parallel: N vertical branches between top and bottom rails
+      // Parallel on top rail with symmetric split: half above, half below, even shorter wires
       const n = list.length;
-      const gap = (rightX - leftX) / (n + 1);
-      const branchLen = (bottomY - topY) - 24;
-      list.forEach((r, i) => {
-        const x = leftX + gap * (i + 1);
-        svg.appendChild(dot(x, topY));
-        svg.appendChild(dot(x, bottomY));
-        const f = Math.max(0, res.per[r.id].P) / pMax;
-        const sel = selectedIds.has(r.id);
-        const g = resistorVertical(x, centerY, branchLen, f, sel);
-        g.dataset.resistorId = r.id;
+      const busInset = Math.min(320, (rightX - leftX) * 0.42); // bring buses further inward to shorten branches
+      const xL = leftX + busInset;
+      const xR = rightX - busInset;
+      const yMain = topY;
+      // Break the top wire between fork and rejoin to avoid bypass
+      drawRectangleLoop({ topGap: [xL, xR] });
+
+      // Fork/rejoin markers on the main wire
+      svg.appendChild(dot(xL, yMain));
+      svg.appendChild(dot(xR, yMain));
+
+      // Determine lanes above and below
+      const nAbove = Math.floor(n / 2);
+      const nBelow = n - nAbove;
+      const laneGap = 24; // even shorter vertical runs
+      const aboveYs = Array.from({ length: nAbove }, (_, i) => yMain - laneGap * (i + 1));
+      const belowYs = Array.from({ length: nBelow }, (_, i) => yMain + laneGap * (i + 1));
+
+      const yTopMost = aboveYs.length ? aboveYs[aboveYs.length - 1] : yMain;
+      const yBottomMost = belowYs.length ? belowYs[belowYs.length - 1] : yMain;
+
+      // Draw compact bus bars up and down from the main wire to the extreme lanes
+      if (yTopMost !== yMain) {
+        svg.appendChild(line(xL, yMain, xL, yTopMost));
+        svg.appendChild(line(xR, yMain, xR, yTopMost));
+      }
+      if (yBottomMost !== yMain) {
+        svg.appendChild(line(xL, yMain, xL, yBottomMost));
+        svg.appendChild(line(xR, yMain, xR, yBottomMost));
+      }
+
+      // Assign resistors to lanes: fill above first, then below
+      let idx = 0;
+      const lanes = [];
+      for (let i = 0; i < nAbove && idx < n; i++, idx++) lanes.push({ id: list[idx].id, y: aboveYs[i], pos: "above" });
+      for (let i = 0; i < nBelow && idx < n; i++, idx++) lanes.push({ id: list[idx].id, y: belowYs[i], pos: "below" });
+
+      // Render each branch as a horizontal resistor between bus bars
+      const length = xR - xL;
+      lanes.forEach(l => {
+        const rId = l.id;
+        const comp = list.find(x => x.id === rId);
+        const sel = selectedIds.has(rId);
+        const f = Math.max(0, res.per[rId].P) / pMax;
+        const g = componentHorizontal(comp?.type || "resistor", (xL + xR) / 2, l.y, length, f, sel);
+        g.dataset.resistorId = rId;
         g.addEventListener("click", (e) => {
           e.stopPropagation();
-          if (selectedIds.has(r.id)) selectedIds.delete(r.id); else selectedIds.add(r.id);
+          if (selectedIds.has(rId)) selectedIds.delete(rId); else selectedIds.add(rId);
           update();
         });
+        g.addEventListener("contextmenu", (e) => {
+          e.preventDefault();
+          showContextMenu(e.clientX, e.clientY, rId);
+        });
         svg.appendChild(g);
+
         if (sel) {
-          const pos = x < centerX ? "left" : "right";
-          svg.appendChild(popupBox(x, centerY, [
-            `V = ${fmtV(res.per[r.id].V)}`,
-            `I = ${fmtI(res.per[r.id].I)}`
-          ], pos));
+          svg.appendChild(popupBox((xL + xR) / 2, l.y, [
+            `V = ${fmtV(res.per[rId].V)}`,
+            `I = ${fmtI(res.per[rId].I)}`
+          ], l.pos === "above" ? "above" : "below", () => { selectedIds.delete(rId); update(); }));
         }
       });
     }
@@ -307,6 +671,10 @@
     elR2P.textContent = second ? `P=${fmtP(res.per[second.id].P)}` : "";
 
     render(mode, V, resistors, res);
+    // Toggle remove button availability
+    if (elRemove) {
+      elRemove.disabled = selectedIds.size === 0;
+    }
   }
 
   [elV, elR1, elR2, ...elMode].forEach(input => {
@@ -317,10 +685,28 @@
   if (elAdd) {
     elAdd.addEventListener("click", () => {
       const R = Math.max(0.01, parseFloat(elNewR.value || "0"));
+      const type = (elNewType?.value === "bulb") ? "bulb" : "resistor";
       const id = `r${nextId++}`;
-      resistors.push({ id, R });
+      resistors.push({ id, R, type });
       update();
     });
+  }
+  if (elRemove) {
+    elRemove.addEventListener("click", () => {
+      if (selectedIds.size === 0) return;
+      const ids = Array.from(selectedIds);
+      ids.forEach(removeById);
+      selectedIds.clear();
+      update();
+    });
+  }
+
+  function removeById(id) {
+    const idx = resistors.findIndex(r => r.id === id);
+    if (idx >= 0) {
+      resistors.splice(idx, 1);
+      selectedIds.delete(id);
+    }
   }
 
   update();

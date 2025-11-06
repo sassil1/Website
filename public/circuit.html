@@ -57,10 +57,15 @@
       </div>
 
       <div class="field" style="grid-column: span 2;">
-        <label for="newR">New Resistor (Ω)</label>
-        <div style="display:flex; gap:8px; align-items:center;">
+        <label for="newR">Add Component</label>
+        <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+          <select id="newType">
+            <option value="resistor">Basic Resistor</option>
+            <option value="bulb">Lightbulb</option>
+          </select>
           <input id="newR" type="number" step="0.1" min="0.01" value="10" />
-          <button id="addRes" type="button">Add Resistor</button>
+          <button id="addRes" type="button">Add</button>
+          <button id="removeSel" type="button" disabled>Remove Selected</button>
         </div>
         <div class="muted">Adds to the current configuration (series or parallel)</div>
       </div>
