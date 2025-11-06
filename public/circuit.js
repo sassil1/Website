@@ -33,11 +33,8 @@
   const selectedIds = new Set(); // values: 'r1', 'r2'
 
   // Dynamic resistor list
-  const resistors = [
-    { id: "r1", R: 10, type: "resistor" },
-    { id: "r2", R: 20, type: "resistor" },
-  ];
-  let nextId = 3;
+  const resistors = [];
+  let nextId = 1;
   // Simple HTML context menu overlay
   let ctxMenu = null;
   function ensureContextMenu() {
@@ -134,8 +131,11 @@
 
   // Physics for N resistors
   function computeSeriesN(V, list) {
+    if (list.length === 0) {
+      return { Rtot: Infinity, Itot: 0, Ptot: 0, per: {} };
+    }
     const Rtot = list.reduce((s, r) => s + r.R, 0);
-    const Itot = Rtot > 0 ? V / Rtot : Infinity;
+    const Itot = Rtot > 0 ? V / Rtot : 0;
     const per = {};
     for (const r of list) {
       const Vr = Itot * r.R;
@@ -146,6 +146,9 @@
   }
 
   function computeParallelN(V, list) {
+    if (list.length === 0) {
+      return { Rtot: Infinity, Itot: 0, Ptot: 0, per: {} };
+    }
     const G = list.reduce((s, r) => s + 1 / r.R, 0);
     const Rtot = 1 / G;
     const per = {};
@@ -577,6 +580,11 @@
     } else {
       // Parallel on top rail with symmetric split: half above, half below, even shorter wires
       const n = list.length;
+      if (n === 0) {
+        // With no branches, render intact rectangle (no fork gap)
+        drawRectangleLoop();
+        return;
+      }
       const busInset = Math.min(320, (rightX - leftX) * 0.42); // bring buses further inward to shorten branches
       const xL = leftX + busInset;
       const xR = rightX - busInset;
