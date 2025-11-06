@@ -523,8 +523,10 @@
           if (sel) {
             const popupPos = pos.edge === "top" ? "below" : "above";
             svg.appendChild(popupBox(px, y, [
+              `R = ${fmtR(r.R)}`,
               `V = ${fmtV(res.per[r.id].V)}`,
-              `I = ${fmtI(res.per[r.id].I)}`
+              `I = ${fmtI(res.per[r.id].I)}`,
+              `P = ${fmtP(res.per[r.id].P)}`
             ], popupPos, () => { selectedIds.delete(r.id); update(); }));
           }
         } else {
@@ -571,8 +573,10 @@
           if (sel) {
             const popupPos = pos.edge === "right" ? "right" : "left";
             svg.appendChild(popupBox(x, py, [
+              `R = ${fmtR(r.R)}`,
               `V = ${fmtV(res.per[r.id].V)}`,
-              `I = ${fmtI(res.per[r.id].I)}`
+              `I = ${fmtI(res.per[r.id].I)}`,
+              `P = ${fmtP(res.per[r.id].P)}`
             ], popupPos, () => { selectedIds.delete(r.id); update(); }));
           }
         }
@@ -644,8 +648,10 @@
 
         if (sel) {
           svg.appendChild(popupBox((xL + xR) / 2, l.y, [
+            `R = ${fmtR(comp?.R ?? 0)}`,
             `V = ${fmtV(res.per[rId].V)}`,
-            `I = ${fmtI(res.per[rId].I)}`
+            `I = ${fmtI(res.per[rId].I)}`,
+            `P = ${fmtP(res.per[rId].P)}`
           ], l.pos === "above" ? "above" : "below", () => { selectedIds.delete(rId); update(); }));
         }
       });
@@ -669,14 +675,13 @@
     elTotalI.textContent = fmtI(res.Itot);
     elTotalP.textContent = fmtP(res.Ptot);
 
-    // Omit V/I in side cards; show only in popups
-    elR1VI.textContent = "";
-    elR2VI.textContent = "";
-    // show P for first two if present
+    // Side cards may not exist; guard updates
+    if (elR1VI) elR1VI.textContent = "";
+    if (elR2VI) elR2VI.textContent = "";
     const first = resistors[0];
     const second = resistors[1];
-    elR1P.textContent = first ? `P=${fmtP(res.per[first.id].P)}` : "";
-    elR2P.textContent = second ? `P=${fmtP(res.per[second.id].P)}` : "";
+    if (elR1P) elR1P.textContent = first ? `P=${fmtP(res.per[first.id].P)}` : "";
+    if (elR2P) elR2P.textContent = second ? `P=${fmtP(res.per[second.id].P)}` : "";
 
     render(mode, V, resistors, res);
     // Toggle remove button availability
