@@ -7,7 +7,7 @@
 
 body {
     font-family: 'Comic Neue', cursive;
-    background: linear-gradient(135deg, #FFD700 0%, #FFA500 25%, #FF69B4 50%, #FFD700 75%, #FFA500 100%);
+    background: linear-gradient(135deg, #3B82F6 0%, #6366F1 25%, #9B59B6 50%, #3B82F6 75%, #6366F1 100%);
     background-size: 400% 400%;
     animation: gradientShift 8s ease infinite;
     min-height: 100vh;
@@ -26,9 +26,9 @@ body {
     text-align: center;
     padding: 2rem 1rem;
     position: relative;
-    background: linear-gradient(45deg, #FFD700, #FFA500);
+    background: linear-gradient(45deg, #3B82F6, #6366F1);
     border-radius: 0 0 50px 50px;
-    box-shadow: 0 10px 30px rgba(255, 215, 0, 0.3);
+    box-shadow: 0 10px 30px rgba(59, 130, 246, 0.3);
     margin-bottom: 2rem;
 }
 
@@ -76,7 +76,7 @@ body {
     font-family: 'Fredoka One', cursive;
     font-size: 3.5rem;
     color: #8B4513;
-    text-shadow: 3px 3px 0px #FFD700, 6px 6px 0px #FF69B4;
+    text-shadow: 3px 3px 0px #3B82F6, 6px 6px 0px #9B59B6;
     margin-bottom: 1rem;
     animation: bounce 2s infinite;
 }
@@ -91,16 +91,16 @@ body {
     font-size: 1.3rem;
     color: #2C1810;
     font-weight: 700;
-    text-shadow: 1px 1px 2px rgba(255, 215, 0, 0.5);
+    text-shadow: 1px 1px 2px rgba(59, 130, 246, 0.5);
 }
 
 /* Navigation */
 .nav {
-    background: linear-gradient(90deg, #FF69B4, #FFD700, #FF69B4);
+    background: linear-gradient(90deg, #9B59B6, #3B82F6, #9B59B6);
     padding: 1rem;
     border-radius: 25px;
     margin: 0 2rem 2rem 2rem;
-    box-shadow: 0 5px 15px rgba(255, 105, 180, 0.3);
+    box-shadow: 0 5px 15px rgba(155, 89, 182, 0.3);
 }
 
 .nav ul {
@@ -123,9 +123,9 @@ body {
 }
 
 .nav-link:hover {
-    background: #FFD700;
+    background: #3B82F6;
     transform: translateY(-3px);
-    box-shadow: 0 5px 15px rgba(255, 215, 0, 0.4);
+    box-shadow: 0 5px 15px rgba(59, 130, 246, 0.4);
 }
 
 /* Sections */
@@ -135,7 +135,7 @@ body {
     background: rgba(255, 255, 255, 0.9);
     border-radius: 30px;
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-    border: 3px solid #FFD700;
+    border: 3px solid #3B82F6;
 }
 
 .section-title {
@@ -144,7 +144,7 @@ body {
     text-align: center;
     color: #8B4513;
     margin-bottom: 2rem;
-    text-shadow: 2px 2px 0px #FFD700;
+    text-shadow: 2px 2px 0px #3B82F6;
 }
 
 /* Content Grid */
@@ -156,19 +156,19 @@ body {
 }
 
 .info-card {
-    background: linear-gradient(135deg, #FFD700, #FFA500);
+    background: linear-gradient(135deg, #3B82F6, #6366F1);
     padding: 2rem;
     border-radius: 25px;
     text-align: center;
-    box-shadow: 0 8px 25px rgba(255, 215, 0, 0.3);
+    box-shadow: 0 8px 25px rgba(59, 130, 246, 0.3);
     transition: all 0.3s ease;
     cursor: pointer;
-    border: 3px solid #FF69B4;
+    border: 3px solid #9B59B6;
 }
 
 .info-card:hover {
     transform: translateY(-10px) scale(1.05);
-    box-shadow: 0 15px 35px rgba(255, 215, 0, 0.5);
+    box-shadow: 0 15px 35px rgba(59, 130, 246, 0.5);
 }
 
 .card-icon {
@@ -190,7 +190,7 @@ body {
 }
 
 .learn-more-btn {
-    background: #FF69B4;
+    background: #9B59B6;
     color: white;
     border: none;
     padding: 0.8rem 1.5rem;
@@ -199,13 +199,13 @@ body {
     font-weight: 700;
     cursor: pointer;
     transition: all 0.3s ease;
-    box-shadow: 0 3px 10px rgba(255, 105, 180, 0.3);
+    box-shadow: 0 3px 10px rgba(155, 89, 182, 0.3);
 }
 
 .learn-more-btn:hover {
-    background: #FF1493;
+    background: #7C3AED;
     transform: translateY(-2px);
-    box-shadow: 0 5px 15px rgba(255, 105, 180, 0.5);
+    box-shadow: 0 5px 15px rgba(155, 89, 182, 0.5);
 }
 
 /* Bee Importance Section */
@@ -222,7 +222,7 @@ body {
     font-size: 2rem;
     color: #8B4513;
     margin-bottom: 1.5rem;
-    text-shadow: 1px 1px 0px #FFD700;
+    text-shadow: 1px 1px 0px #3B82F6;
 }
 
 .importance-list {
@@ -234,9 +234,9 @@ body {
 .importance-list li {
     margin-bottom: 1rem;
     padding: 1rem;
-    background: linear-gradient(135deg, #FFD700, #FFA500);
+    background: linear-gradient(135deg, #3B82F6, #6366F1);
     border-radius: 15px;
-    box-shadow: 0 5px 15px rgba(255, 215, 0, 0.2);
+    box-shadow: 0 5px 15px rgba(59, 130, 246, 0.2);
 }
 
 .bee-image-container {
@@ -267,10 +267,10 @@ body {
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    background: rgba(255, 215, 0, 0.95);
+    background: rgba(59, 130, 246, 0.95);
     padding: 2rem;
     border-radius: 20px;
-    border: 3px solid #FF69B4;
+    border: 3px solid #9B59B6;
     display: none;
     z-index: 10;
     max-width: 300px;
@@ -281,7 +281,7 @@ body {
 
 /* Endangerment Alert */
 .endangerment-alert {
-    background: linear-gradient(135deg, #FF69B4, #FFD700);
+    background: linear-gradient(135deg, #9B59B6, #3B82F6);
     padding: 2rem;
     border-radius: 25px;
     margin: 2rem 0;
@@ -348,11 +348,11 @@ body {
 }
 
 .fact-card {
-    background: linear-gradient(135deg, #FF69B4, #FFD700);
+    background: linear-gradient(135deg, #9B59B6, #3B82F6);
     padding: 2rem;
     border-radius: 25px;
     text-align: center;
-    box-shadow: 0 8px 25px rgba(255, 105, 180, 0.3);
+    box-shadow: 0 8px 25px rgba(155, 89, 182, 0.3);
     transition: all 0.3s ease;
     cursor: pointer;
     border: 3px solid #8B4513;
@@ -360,7 +360,7 @@ body {
 
 .fact-card:hover {
     transform: translateY(-10px) rotate(2deg);
-    box-shadow: 0 15px 35px rgba(255, 105, 180, 0.5);
+    box-shadow: 0 15px 35px rgba(155, 89, 182, 0.5);
 }
 
 .fact-card h3 {
@@ -387,7 +387,7 @@ body {
     color: #8B4513;
     text-align: center;
     margin-bottom: 2rem;
-    text-shadow: 1px 1px 0px #FFD700;
+    text-shadow: 1px 1px 0px #3B82F6;
 }
 
 .gallery-grid {
@@ -415,7 +415,7 @@ body {
     object-fit: cover;
     border-radius: 15px;
     box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
-    border: 3px solid #FFD700;
+    border: 3px solid #3B82F6;
 }
 
 .gallery-item p {
@@ -434,11 +434,11 @@ body {
 }
 
 .recipe-card {
-    background: linear-gradient(135deg, #FFD700, #FFA500);
+    background: linear-gradient(135deg, #3B82F6, #6366F1);
     border-radius: 25px;
     overflow: hidden;
-    box-shadow: 0 10px 30px rgba(255, 215, 0, 0.3);
-    border: 3px solid #FF69B4;
+    box-shadow: 0 10px 30px rgba(59, 130, 246, 0.3);
+    border: 3px solid #9B59B6;
     transition: transform 0.3s ease;
 }
 
@@ -467,7 +467,7 @@ body {
     color: #2C1810;
     text-align: center;
     padding: 1.5rem 1rem 1rem 1rem;
-    text-shadow: 1px 1px 0px #FF69B4;
+    text-shadow: 1px 1px 0px #9B59B6;
 }
 
 .recipe-content {
@@ -493,7 +493,7 @@ body {
 
 /* Honey Uses */
 .honey-uses {
-    background: linear-gradient(135deg, #FF69B4, #FFD700);
+    background: linear-gradient(135deg, #9B59B6, #3B82F6);
     padding: 2rem;
     border-radius: 25px;
     margin-top: 3rem;
@@ -506,7 +506,7 @@ body {
     color: #2C1810;
     text-align: center;
     margin-bottom: 2rem;
-    text-shadow: 1px 1px 0px #FFD700;
+    text-shadow: 1px 1px 0px #3B82F6;
 }
 
 .uses-grid {
@@ -541,7 +541,7 @@ body {
     font-size: 2rem;
     color: #8B4513;
     margin-bottom: 2rem;
-    text-shadow: 1px 1px 0px #FFD700;
+    text-shadow: 1px 1px 0px #3B82F6;
 }
 
 .video-wrapper {
@@ -552,7 +552,7 @@ body {
     border-radius: 20px;
     overflow: hidden;
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-    border: 3px solid #FFD700;
+    border: 3px solid #3B82F6;
 }
 
 .video-wrapper iframe {
@@ -563,7 +563,7 @@ body {
 
 /* Footer */
 .footer {
-    background: linear-gradient(45deg, #8B4513, #FFD700, #8B4513);
+    background: linear-gradient(45deg, #8B4513, #3B82F6, #8B4513);
     padding: 3rem 2rem;
     text-align: center;
     margin-top: 4rem;
@@ -573,7 +573,7 @@ body {
 .footer-content h3 {
     font-family: 'Fredoka One', cursive;
     font-size: 2rem;
-    color: #FFD700;
+    color: #3B82F6;
     margin-bottom: 1rem;
     text-shadow: 2px 2px 0px #8B4513;
 }
@@ -623,14 +623,14 @@ body {
 }
 
 .modal-content {
-    background: linear-gradient(135deg, #FFD700, #FFA500);
+    background: linear-gradient(135deg, #3B82F6, #6366F1);
     margin: 10% auto;
     padding: 2rem;
     border-radius: 25px;
     width: 80%;
     max-width: 600px;
     box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
-    border: 3px solid #FF69B4;
+    border: 3px solid #9B59B6;
     position: relative;
     animation: slideIn 0.3s ease;
 }
@@ -652,7 +652,7 @@ body {
 }
 
 .close:hover {
-    color: #FF69B4;
+    color: #9B59B6;
 }
 
 #popup-content {
@@ -667,7 +667,7 @@ body {
     font-size: 2rem;
     color: #8B4513;
     margin-bottom: 1rem;
-    text-shadow: 1px 1px 0px #FFD700;
+    text-shadow: 1px 1px 0px #3B82F6;
 }
 
 /* Responsive Design */
